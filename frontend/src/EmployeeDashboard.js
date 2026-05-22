@@ -21,7 +21,7 @@ function EmployeeDashboard({ user, handleLogout }) {
         try {
 
             const response = await axios.get(
-                `http://127.0.0.1:5000/employee-dashboard/${user.full_name}?month=${selectedMonth}`
+                `https://employee-performance-tracker-gtez.onrender.com/employee-dashboard/${user.full_name}?month=${selectedMonth}`
             );
 
             setDashboardData(response.data.dashboard);

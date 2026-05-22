@@ -21,7 +21,7 @@ function EntriesTable() {
         try {
 
             const response = await axios.get(
-                "http://127.0.0.1:5000/all-entries"
+                "https://employee-performance-tracker-gtez.onrender.com/all-entries"
             );
 
             setEntries(response.data.entries);
@@ -63,7 +63,7 @@ function EntriesTable() {
         try {
 
             await axios.delete(
-                `http://127.0.0.1:5000/delete-entry/${id}`
+                `https://employee-performance-tracker-gtez.onrender.com/delete-entry/${id}`
             );
 
             alert("Entry deleted successfully");
@@ -111,7 +111,7 @@ function EntriesTable() {
         try {
 
             await axios.put(
-                `http://127.0.0.1:5000/update-entry/${entry.id}`,
+                `https://employee-performance-tracker-gtez.onrender.com/update-entry/${entry.id}`,
                 {
                     customer_name,
                     total_receivable,

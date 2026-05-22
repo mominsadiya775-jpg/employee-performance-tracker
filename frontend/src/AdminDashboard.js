@@ -26,7 +26,7 @@ function AdminDashboard({ user, handleLogout }) {
         try {
 
             const response = await axios.get(
-                `http://127.0.0.1:5000/admin-dashboard?month=${selectedMonth}`
+                `https://employee-performance-tracker-gtez.onrender.com/admin-dashboard?month=${selectedMonth}`
             );
 
             setDashboardData(response.data);
@@ -46,7 +46,7 @@ function AdminDashboard({ user, handleLogout }) {
     const handleExport = () => {
 
         window.open(
-            `http://127.0.0.1:5000/export-report?month=${selectedMonth}`
+            `https://employee-performance-tracker-gtez.onrender.com/export-report?month=${selectedMonth}`
         );
     };
 
