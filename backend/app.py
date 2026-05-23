@@ -24,7 +24,7 @@ app.config['MYSQL_USER'] = os.environ.get(
 
 app.config['MYSQL_PASSWORD'] = os.environ.get(
     'MYSQLPASSWORD',
-    'OoIfUYWpxFTIZfUzVuudYrVBmocsUhmd'
+    'YOUR_PASSWORD'
 )
 
 app.config['MYSQL_DB'] = os.environ.get(
@@ -36,23 +36,18 @@ app.config['MYSQL_PORT'] = int(
     os.environ.get('MYSQLPORT', 44015)
 )
 
-app.config['UPLOAD_FOLDER'] = 'uploads'
-
 mysql = MySQL(app)
 
-os.makedirs('uploads', exist_ok=True)
-
 # ==========================================
-# HOME ROUTE
+# HOME
 # ==========================================
 
 @app.route('/')
 def home():
-
     return "Employee Performance Tracker Running Successfully"
 
 # ==========================================
-# LOGIN API
+# LOGIN
 # ==========================================
 
 @app.route('/login', methods=['POST'])
@@ -67,8 +62,7 @@ def login():
 
         cur = mysql.connection.cursor()
 
-        cur.execute(
-            """
+        cur.execute("""
             SELECT
                 id,
                 full_name,
@@ -76,9 +70,7 @@ def login():
                 role
             FROM users
             WHERE username=%s AND password=%s
-            """,
-            (username, password)
-        )
+        """, (username, password))
 
         user = cur.fetchone()
 
@@ -87,318 +79,32 @@ def login():
         if user:
 
             return jsonify({
-
                 "success": True,
-
                 "user": {
-
                     "id": user[0],
-
                     "full_name": user[1],
-
                     "username": user[2],
-
                     "role": user[3]
                 }
             })
 
-        else:
-
-            return jsonify({
-
-                "success": False,
-
-                "message": "Invalid username or password"
-
-            }), 401
+        return jsonify({
+            "success": False,
+            "message": "Invalid Credentials"
+        }), 401
 
     except Exception as e:
 
         return jsonify({
-
             "success": False,
-
             "error": str(e)
-
         }), 500
 
-# ==========================================
-# ADD ENTRY API
-# ==========================================
-
-@app.route('/add-entry', methods=['POST'])
-def add_entry():
-
-    try:
-
-        data = request.get_json()
-
-        entry_date = data.get('entry_date')
-
-        month = data.get('month')
-
-        type_of_support = data.get('type_of_support')
-
-        data_managed_by = data.get('data_managed_by')
-
-        coordination_done_by = data.get(
-            'coordination_done_by'
-        )
-
-        customer_name = data.get('customer_name')
-
-        total_receivable = data.get(
-            'total_receivable'
-        )
-
-        status = data.get('status')
-
-        remarks = data.get('remarks')
-
-        try:
-
-            total_receivable = float(
-                total_receivable
-            )
-
-        except:
-
-            total_receivable = 0
-
-        cur = mysql.connection.cursor()
-
-        cur.execute(
-            """
-            INSERT INTO ledger_entries
-            (
-                entry_date,
-                month,
-                type_of_support,
-                data_managed_by,
-                coordination_done_by,
-                customer_name,
-                total_receivable,
-                status,
-                remarks
-            )
-            VALUES
-            (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """,
-            (
-                entry_date,
-                month,
-                type_of_support,
-                data_managed_by,
-                coordination_done_by,
-                customer_name,
-                total_receivable,
-                status,
-                remarks
-            )
-        )
-
-        mysql.connection.commit()
-
-        cur.close()
-
-        return jsonify({
-
-            "success": True,
-
-            "message": "Entry added successfully"
-
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
-        }), 500
 
 # ==========================================
-# GET ALL ENTRIES API
+# EMPLOYEE DASHBOARD
 # ==========================================
 
-@app.route('/all-entries', methods=['GET'])
-def all_entries():
-
-    try:
-
-        cur = mysql.connection.cursor()
-
-        cur.execute(
-            """
-            SELECT
-                id,
-                entry_date,
-                month,
-                customer_name,
-                data_managed_by,
-                coordination_done_by,
-                total_receivable,
-                status
-            FROM ledger_entries
-            ORDER BY id DESC
-            """
-        )
-
-        rows = cur.fetchall()
-
-        cur.close()
-
-        entries = []
-
-        for row in rows:
-
-            try:
-
-                total_receivable = float(
-                    row[6]
-                ) if row[6] else 0
-
-            except:
-
-                total_receivable = 0
-
-            entries.append({
-
-                "id": row[0],
-
-                "entry_date": str(row[1]),
-
-                "month": row[2],
-
-                "customer_name": row[3],
-
-                "data_managed_by": row[4],
-
-                "coordination_done_by": row[5],
-
-                "total_receivable": total_receivable,
-
-                "status": row[7]
-            })
-
-        return jsonify({
-
-            "success": True,
-
-            "entries": entries
-
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
-        }), 500
-
-# ==========================================
-# DELETE ENTRY API
-# ==========================================
-
-@app.route('/delete-entry/<int:id>', methods=['DELETE'])
-def delete_entry(id):
-
-    try:
-
-        cur = mysql.connection.cursor()
-
-        cur.execute(
-            "DELETE FROM ledger_entries WHERE id=%s",
-            (id,)
-        )
-
-        mysql.connection.commit()
-
-        cur.close()
-
-        return jsonify({
-
-            "success": True,
-
-            "message": "Entry deleted successfully"
-
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
-        }), 500
-
-# ==========================================
-# UPDATE ENTRY API
-# ==========================================
-
-@app.route('/update-entry/<int:id>', methods=['PUT'])
-def update_entry(id):
-
-    try:
-
-        data = request.get_json()
-
-        customer_name = data.get('customer_name')
-
-        total_receivable = data.get(
-            'total_receivable'
-        )
-
-        status = data.get('status')
-
-        cur = mysql.connection.cursor()
-
-        cur.execute(
-            """
-            UPDATE ledger_entries
-            SET
-                customer_name=%s,
-                total_receivable=%s,
-                status=%s
-            WHERE id=%s
-            """,
-            (
-                customer_name,
-                total_receivable,
-                status,
-                id
-            )
-        )
-
-        mysql.connection.commit()
-
-        cur.close()
-
-        return jsonify({
-
-            "success": True,
-
-            "message": "Entry updated successfully"
-
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
-        }), 500
-    
 @app.route('/employee-dashboard/<employee_name>', methods=['GET'])
 def employee_dashboard(employee_name):
 
@@ -408,7 +114,7 @@ def employee_dashboard(employee_name):
 
         cur = mysql.connection.cursor()
 
-        if month:
+        if month and month != "":
 
             cur.execute("""
                 SELECT
@@ -448,18 +154,19 @@ def employee_dashboard(employee_name):
 
         for row in rows:
 
-            manager = row[0]
-            coordinator = row[1]
+            manager = str(row[0]).strip() if row[0] else ""
+            coordinator = str(row[1]).strip() if row[1] else ""
 
             try:
-                profit = float(row[2]) if row[2] not in [None, ''] else 0
+                profit = float(row[2]) if row[2] else 0
             except:
                 profit = 0
 
             customer_name = row[3]
             status = row[4]
 
-            if not coordinator or manager == coordinator:
+            # SOLO ENTRY
+            if coordinator == "" or manager == coordinator:
 
                 if manager == employee_name:
 
@@ -474,6 +181,7 @@ def employee_dashboard(employee_name):
                         "entry_type": "solo"
                     })
 
+            # SHARED ENTRY
             else:
 
                 split_profit = profit / 2
@@ -514,304 +222,12 @@ def employee_dashboard(employee_name):
         return jsonify({
             "success": False,
             "error": str(e)
-        }), 500    
-
-# ==========================================
-# ADMIN DASHBOARD API
-# ==========================================
-
-@app.route('/admin-dashboard', methods=['GET'])
-def admin_dashboard():
-
-    try:
-
-        month = request.args.get('month')
-
-        cur = mysql.connection.cursor()
-
-        cur.execute(
-            """
-            SELECT COUNT(*)
-            FROM users
-            WHERE role='employee'
-            """
-        )
-
-        total_employees = cur.fetchone()[0]
-
-        if month:
-
-            cur.execute(
-                """
-                SELECT
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable
-                FROM ledger_entries
-                WHERE month=%s
-                """,
-                (month,)
-            )
-
-        else:
-
-            cur.execute(
-                """
-                SELECT
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable
-                FROM ledger_entries
-                """
-            )
-
-        rows = cur.fetchall()
-
-        cur.close()
-
-        performance = {}
-
-        total_company_profit = 0
-
-        total_entries = 0
-
-        for row in rows:
-
-            manager = row[0]
-
-            coordinator = row[1]
-
-            try:
-
-                profit = float(row[2]) \
-                    if row[2] not in [None, ''] \
-                    else 0
-
-            except:
-
-                profit = 0
-
-            total_company_profit += profit
-
-            total_entries += 1
-
-            if manager is None \
-               or str(manager).strip() == "":
-
-                continue
-
-            if not coordinator \
-               or manager == coordinator:
-
-                if manager not in performance:
-
-                    performance[manager] = {
-
-                        "entries": 0,
-
-                        "profit": 0
-                    }
-
-                performance[manager]["entries"] += 1
-
-                performance[manager]["profit"] += profit
-
-            else:
-
-                split_profit = profit / 2
-
-                if manager not in performance:
-
-                    performance[manager] = {
-
-                        "entries": 0,
-
-                        "profit": 0
-                    }
-
-                performance[manager]["entries"] += 0.5
-
-                performance[manager]["profit"] += split_profit
-
-                if coordinator \
-                   and str(coordinator).strip() != "":
-
-                    if coordinator not in performance:
-
-                        performance[coordinator] = {
-
-                            "entries": 0,
-
-                            "profit": 0
-                        }
-
-                    performance[coordinator]["entries"] += 0.5
-
-                    performance[coordinator]["profit"] += split_profit
-
-        cleaned_performance = {
-
-            str(k): v
-
-            for k, v in performance.items()
-
-            if k is not None
-            and str(k).strip() != ""
-        }
-
-        sorted_performance = sorted(
-
-            cleaned_performance.items(),
-
-            key=lambda x: x[1]["profit"],
-
-            reverse=True
-        )
-
-        return jsonify({
-
-            "success": True,
-
-            "month_filter": month,
-
-            "summary": {
-
-                "total_employees": total_employees,
-
-                "total_entries": total_entries,
-
-                "total_company_profit":
-                    total_company_profit
-            },
-
-            "top_performers": sorted_performance
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
         }), 500
 
-# ==========================================
-# EXPORT REPORT API
-# ==========================================
-
-@app.route('/export-report', methods=['GET'])
-def export_report():
-
-    try:
-
-        month = request.args.get('month')
-
-        cur = mysql.connection.cursor()
-
-        if month:
-
-            cur.execute(
-                """
-                SELECT
-                    entry_date,
-                    month,
-                    customer_name,
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable,
-                    status
-                FROM ledger_entries
-                WHERE month=%s
-                """,
-                (month,)
-            )
-
-        else:
-
-            cur.execute(
-                """
-                SELECT
-                    entry_date,
-                    month,
-                    customer_name,
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable,
-                    status
-                FROM ledger_entries
-                """
-            )
-
-        rows = cur.fetchall()
-
-        cur.close()
-
-        data = []
-
-        for row in rows:
-
-            data.append({
-
-                "Date": str(row[0]),
-
-                "Month": row[1],
-
-                "Customer Name": row[2],
-
-                "Managed By": row[3],
-
-                "Coordination By": row[4],
-
-                "Total Receivable": float(row[5]),
-
-                "Status": row[6]
-            })
-
-        df = pd.DataFrame(data)
-
-        output = io.BytesIO()
-
-        with pd.ExcelWriter(
-            output,
-            engine='openpyxl'
-        ) as writer:
-
-            df.to_excel(
-
-                writer,
-
-                index=False,
-
-                sheet_name='Report'
-            )
-
-        output.seek(0)
-
-        return send_file(
-
-            output,
-
-            download_name='performance_report.xlsx',
-
-            as_attachment=True
-        )
-
-    except Exception as e:
-
-        return jsonify({
-
-            "success": False,
-
-            "error": str(e)
-
-        }), 500
 
 # ==========================================
 # RUN APP
 # ==========================================
 
 if __name__ == '__main__':
-
     app.run(debug=True)
