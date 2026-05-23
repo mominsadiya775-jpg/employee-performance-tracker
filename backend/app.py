@@ -8,11 +8,11 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-app.config['MYSQL_HOST'] = os.environ.get('MYSQL_HOST', 'kodama.proxy.rlwy.net')
-app.config['MYSQL_USER'] = os.environ.get('MYSQL_USER', 'root')
-app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQL_PASSWORD', 'OoIfUYWpxFTIZfUzVuudYrvBmocsUhmd')
-app.config['MYSQL_DB'] = os.environ.get('MYSQL_DB', 'railway')
-app.config['MYSQL_PORT'] = int(os.environ.get('MYSQL_PORT', 44015))
+app.config['MYSQL_HOST'] = os.environ.get('MYSQLHOST', 'kodama.proxy.rlwy.net')
+app.config['MYSQL_USER'] = os.environ.get('MYSQLUSER', 'root')
+app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQLPASSWORD', 'OoIfUYWpxFTIZfUzVuudYrvBmocsUhmd')
+app.config['MYSQL_DB'] = os.environ.get('MYSQLDATABASE', 'railway')
+app.config['MYSQL_PORT'] = int(os.environ.get('MYSQLPORT', 44015))
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 mysql = MySQL(app)
