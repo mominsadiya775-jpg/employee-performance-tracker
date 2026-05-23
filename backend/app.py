@@ -1,9 +1,7 @@
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask import Flask, request, jsonify, send_file
 from flask_mysqldb import MySQL
-import pandas as pd
 import os
-import io
 
 app = Flask(__name__)
 CORS(app)
@@ -24,7 +22,7 @@ app.config['MYSQL_USER'] = os.environ.get(
 
 app.config['MYSQL_PASSWORD'] = os.environ.get(
     'MYSQLPASSWORD',
-    'YOUR_PASSWORD'
+    'OoIfUYWpxFTIZfUzVuudYrVBmocsUhmd'
 )
 
 app.config['MYSQL_DB'] = os.environ.get(
@@ -39,15 +37,16 @@ app.config['MYSQL_PORT'] = int(
 mysql = MySQL(app)
 
 # ==========================================
-# HOME
+# HOME ROUTE
 # ==========================================
 
 @app.route('/')
 def home():
     return "Employee Performance Tracker Running Successfully"
 
+
 # ==========================================
-# LOGIN
+# LOGIN API
 # ==========================================
 
 @app.route('/login', methods=['POST'])
@@ -102,7 +101,7 @@ def login():
 
 
 # ==========================================
-# EMPLOYEE DASHBOARD
+# EMPLOYEE DASHBOARD API
 # ==========================================
 
 @app.route('/employee-dashboard/<employee_name>', methods=['GET'])
@@ -166,9 +165,10 @@ def employee_dashboard(employee_name):
             status = row[4]
 
             # SOLO ENTRY
+
             if coordinator == "" or manager == coordinator:
 
-                if manager == employee_name:
+                if manager.lower() == employee_name.lower():
 
                     dashboard["total_entries"] += 1
                     dashboard["solo_entries"] += 1
@@ -182,11 +182,12 @@ def employee_dashboard(employee_name):
                     })
 
             # SHARED ENTRY
+
             else:
 
                 split_profit = profit / 2
 
-                if manager == employee_name:
+                if manager.lower() == employee_name.lower():
 
                     dashboard["total_entries"] += 0.5
                     dashboard["shared_entries"] += 0.5
@@ -199,7 +200,7 @@ def employee_dashboard(employee_name):
                         "entry_type": "shared"
                     })
 
-                if coordinator == employee_name:
+                if coordinator.lower() == employee_name.lower():
 
                     dashboard["total_entries"] += 0.5
                     dashboard["shared_entries"] += 0.5
