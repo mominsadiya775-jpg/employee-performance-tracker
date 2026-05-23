@@ -398,6 +398,123 @@ def update_entry(id):
             "error": str(e)
 
         }), 500
+    
+@app.route('/employee-dashboard/<employee_name>', methods=['GET'])
+def employee_dashboard(employee_name):
+
+    try:
+
+        month = request.args.get('month')
+
+        cur = mysql.connection.cursor()
+
+        if month:
+
+            cur.execute("""
+                SELECT
+                    data_managed_by,
+                    coordination_done_by,
+                    total_receivable,
+                    customer_name,
+                    status
+                FROM ledger_entries
+                WHERE month=%s
+            """, (month,))
+
+        else:
+
+            cur.execute("""
+                SELECT
+                    data_managed_by,
+                    coordination_done_by,
+                    total_receivable,
+                    customer_name,
+                    status
+                FROM ledger_entries
+            """)
+
+        rows = cur.fetchall()
+
+        cur.close()
+
+        dashboard = {
+            "employee_name": employee_name,
+            "total_entries": 0,
+            "solo_entries": 0,
+            "shared_entries": 0,
+            "total_profit": 0,
+            "entries": []
+        }
+
+        for row in rows:
+
+            manager = row[0]
+            coordinator = row[1]
+
+            try:
+                profit = float(row[2]) if row[2] not in [None, ''] else 0
+            except:
+                profit = 0
+
+            customer_name = row[3]
+            status = row[4]
+
+            if not coordinator or manager == coordinator:
+
+                if manager == employee_name:
+
+                    dashboard["total_entries"] += 1
+                    dashboard["solo_entries"] += 1
+                    dashboard["total_profit"] += profit
+
+                    dashboard["entries"].append({
+                        "customer_name": customer_name,
+                        "profit_share": profit,
+                        "status": status,
+                        "entry_type": "solo"
+                    })
+
+            else:
+
+                split_profit = profit / 2
+
+                if manager == employee_name:
+
+                    dashboard["total_entries"] += 0.5
+                    dashboard["shared_entries"] += 0.5
+                    dashboard["total_profit"] += split_profit
+
+                    dashboard["entries"].append({
+                        "customer_name": customer_name,
+                        "profit_share": split_profit,
+                        "status": status,
+                        "entry_type": "shared"
+                    })
+
+                if coordinator == employee_name:
+
+                    dashboard["total_entries"] += 0.5
+                    dashboard["shared_entries"] += 0.5
+                    dashboard["total_profit"] += split_profit
+
+                    dashboard["entries"].append({
+                        "customer_name": customer_name,
+                        "profit_share": split_profit,
+                        "status": status,
+                        "entry_type": "shared"
+                    })
+
+        return jsonify({
+            "success": True,
+            "dashboard": dashboard
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500    
 
 # ==========================================
 # ADMIN DASHBOARD API
