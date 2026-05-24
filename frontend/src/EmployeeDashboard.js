@@ -3,65 +3,122 @@ import axios from "axios";
 
 function EmployeeDashboard({ user, handleLogout }) {
 
-    // =========================
+    // =====================================
     // STATES
-    // =========================
+    // =====================================
 
     const [dashboardData, setDashboardData] = useState(null);
 
     const [selectedMonth, setSelectedMonth] = useState("");
 
+    const [loading, setLoading] = useState(true);
 
-    // =========================
+
+    // =====================================
     // FETCH DASHBOARD
-    // =========================
+    // =====================================
 
     const fetchDashboard = async () => {
 
         try {
 
+            setLoading(true);
+
             const response = await axios.get(
-                `https://employee-performance-tracker-gtez.onrender.com/employee-dashboard/${user.full_name}?month=${selectedMonth}`
+                `https://employee-performance-tracker-gtez.onrender.com/employee-dashboard/${encodeURIComponent(user.full_name)}?month=${selectedMonth}`
             );
 
-            setDashboardData(response.data.dashboard);
+            console.log("Dashboard Response:", response.data);
+
+            if (response.data.success) {
+
+                setDashboardData(response.data.dashboard);
+
+            } else {
+
+                setDashboardData({
+                    total_entries: 0,
+                    solo_entries: 0,
+                    shared_entries: 0,
+                    total_profit: 0,
+                    entries: []
+                });
+            }
 
         } catch (error) {
 
             console.log("Dashboard Error:", error);
 
+            setDashboardData({
+                total_entries: 0,
+                solo_entries: 0,
+                shared_entries: 0,
+                total_profit: 0,
+                entries: []
+            });
+
+        } finally {
+
+            setLoading(false);
         }
     };
 
 
-    // =========================
+    // =====================================
     // USE EFFECT
-    // =========================
+    // =====================================
 
     useEffect(() => {
 
-        fetchDashboard();
+        if (user && user.full_name) {
 
-    }, [selectedMonth]);
+            fetchDashboard();
+        }
+
+    }, [selectedMonth, user]);
 
 
-    // =========================
-    // LOADING
-    // =========================
+    // =====================================
+    // LOADING SCREEN
+    // =====================================
 
-    if (!dashboardData) {
+    if (loading) {
 
         return (
-            <h2 className="text-center mt-5">
-                Loading...
-            </h2>
+
+            <div className="container mt-5 text-center">
+
+                <h2>
+                    Loading Dashboard...
+                </h2>
+
+            </div>
         );
     }
 
 
-    // =========================
+    // =====================================
+    // FALLBACK
+    // =====================================
+
+    if (!dashboardData) {
+
+        return (
+
+            <div className="container mt-5 text-center">
+
+                <h2>
+                    No Dashboard Data Found
+                </h2>
+
+            </div>
+        );
+    }
+
+
+    // =====================================
     // UI
-    // =========================
+    // =====================================
 
     return (
 
@@ -82,8 +139,6 @@ function EmployeeDashboard({ user, handleLogout }) {
                     </h5>
 
                 </div>
-
-                {/* LOGOUT BUTTON */}
 
                 <button
                     className="btn btn-danger"
@@ -115,18 +170,53 @@ function EmployeeDashboard({ user, handleLogout }) {
                         All Months
                     </option>
 
-                    <option value="January">January</option>
-                    <option value="February">February</option>
-                    <option value="March">March</option>
-                    <option value="April">April</option>
-                    <option value="May">May</option>
-                    <option value="June">June</option>
-                    <option value="July">July</option>
-                    <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October">October</option>
-                    <option value="November">November</option>
-                    <option value="December">December</option>
+                    <option value="January">
+                        January
+                    </option>
+
+                    <option value="February">
+                        February
+                    </option>
+
+                    <option value="March">
+                        March
+                    </option>
+
+                    <option value="April">
+                        April
+                    </option>
+
+                    <option value="May">
+                        May
+                    </option>
+
+                    <option value="June">
+                        June
+                    </option>
+
+                    <option value="July">
+                        July
+                    </option>
+
+                    <option value="August">
+                        August
+                    </option>
+
+                    <option value="September">
+                        September
+                    </option>
+
+                    <option value="October">
+                        October
+                    </option>
+
+                    <option value="November">
+                        November
+                    </option>
+
+                    <option value="December">
+                        December
+                    </option>
 
                 </select>
 
@@ -252,6 +342,7 @@ function EmployeeDashboard({ user, handleLogout }) {
                     <tbody>
 
                         {
+                            dashboardData.entries &&
                             dashboardData.entries.length > 0 ? (
 
                                 dashboardData.entries.map(
