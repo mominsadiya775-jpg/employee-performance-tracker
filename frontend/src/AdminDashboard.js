@@ -167,7 +167,7 @@ function AdminDashboard({ user, handleLogout }) {
                             </h5>
 
                             <h2>
-                                {dashboardData.summary.total_employees}
+                                {dashboardData?.summary?.total_employees || 0}
                             </h2>
 
                         </div>
