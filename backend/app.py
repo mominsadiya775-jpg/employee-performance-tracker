@@ -227,6 +227,45 @@ def employee_dashboard(employee_name):
 
 
 # ==========================================
+@app.route('/admin-dashboard', methods=['GET'])
+def admin_dashboard():
+
+    try:
+
+        month = request.args.get('month')
+
+        cur = mysql.connection.cursor()
+
+        if month and month != "":
+
+            cur.execute("""
+                SELECT *
+                FROM ledger_entries
+                WHERE month=%s
+            """, (month,))
+
+        else:
+
+            cur.execute("""
+                SELECT *
+                FROM ledger_entries
+            """)
+
+        rows = cur.fetchall()
+
+        cur.close()
+
+        return jsonify({
+            "success": True,
+            "entries": rows
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 # RUN APP
 # ==========================================
 
