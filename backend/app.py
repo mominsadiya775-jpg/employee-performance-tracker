@@ -1,6 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_mysqldb import MySQL
+import pandas as pd
+from io import BytesIO
 import os
 
 app = Flask(__name__)
@@ -10,31 +12,14 @@ CORS(app)
 # MYSQL CONFIG
 # ==========================================
 
-app.config['MYSQL_HOST'] = os.environ.get(
-    'MYSQLHOST',
-    'kodama.proxy.rlwy.net'
-)
-
-app.config['MYSQL_USER'] = os.environ.get(
-    'MYSQLUSER',
-    'root'
-)
-
-app.config['MYSQL_PASSWORD'] = os.environ.get(
-    'MYSQLPASSWORD',
-    'OoIfUYWpxFTIZfUzVuudYrVBmocsUhmd'
-)
-
-app.config['MYSQL_DB'] = os.environ.get(
-    'MYSQLDATABASE',
-    'railway'
-)
-
-app.config['MYSQL_PORT'] = int(
-    os.environ.get('MYSQLPORT', 44015)
-)
+app.config['MYSQL_HOST'] = os.environ.get('MYSQLHOST', 'kodama.proxy.rlwy.net')
+app.config['MYSQL_USER'] = os.environ.get('MYSQLUSER', 'root')
+app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQLPASSWORD', 'OoIfUYWpxFTIZfUzVuudYrVBmocsUhmd')
+app.config['MYSQL_DB'] = os.environ.get('MYSQLDATABASE', 'railway')
+app.config['MYSQL_PORT'] = int(os.environ.get('MYSQLPORT', 44015))
 
 mysql = MySQL(app)
+
 
 # ==========================================
 # HOME ROUTE
@@ -51,32 +36,23 @@ def home():
 
 @app.route('/login', methods=['POST'])
 def login():
-
     try:
-
         data = request.get_json()
 
         username = data.get('username')
         password = data.get('password')
 
         cur = mysql.connection.cursor()
-
         cur.execute("""
-            SELECT
-                id,
-                full_name,
-                username,
-                role
+            SELECT id, full_name, username, role
             FROM users
             WHERE username=%s AND password=%s
         """, (username, password))
 
         user = cur.fetchone()
-
         cur.close()
 
         if user:
-
             return jsonify({
                 "success": True,
                 "user": {
@@ -93,7 +69,6 @@ def login():
         }), 401
 
     except Exception as e:
-
         return jsonify({
             "success": False,
             "error": str(e)
@@ -101,171 +76,101 @@ def login():
 
 
 # ==========================================
-# EMPLOYEE DASHBOARD API
+# ADMIN DASHBOARD API
 # ==========================================
 
-@app.route('/employee-dashboard/<employee_name>', methods=['GET'])
-def employee_dashboard(employee_name):
-
-    try:
-
-        month = request.args.get('month')
-
-        cur = mysql.connection.cursor()
-
-        if month and month != "":
-
-            cur.execute("""
-                SELECT
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable,
-                    customer_name,
-                    status
-                FROM ledger_entries
-                WHERE month=%s
-            """, (month,))
-
-        else:
-
-            cur.execute("""
-                SELECT
-                    data_managed_by,
-                    coordination_done_by,
-                    total_receivable,
-                    customer_name,
-                    status
-                FROM ledger_entries
-            """)
-
-        rows = cur.fetchall()
-
-        cur.close()
-
-        dashboard = {
-            "employee_name": employee_name,
-            "total_entries": 0,
-            "solo_entries": 0,
-            "shared_entries": 0,
-            "total_profit": 0,
-            "entries": []
-        }
-
-        for row in rows:
-
-            manager = str(row[0]).strip() if row[0] else ""
-            coordinator = str(row[1]).strip() if row[1] else ""
-
-            try:
-                profit = float(row[2]) if row[2] else 0
-            except:
-                profit = 0
-
-            customer_name = row[3]
-            status = row[4]
-
-            # SOLO ENTRY
-
-            if coordinator == "" or manager == coordinator:
-
-                if manager.lower() == employee_name.lower():
-
-                    dashboard["total_entries"] += 1
-                    dashboard["solo_entries"] += 1
-                    dashboard["total_profit"] += profit
-
-                    dashboard["entries"].append({
-                        "customer_name": customer_name,
-                        "profit_share": profit,
-                        "status": status,
-                        "entry_type": "solo"
-                    })
-
-            # SHARED ENTRY
-
-            else:
-
-                split_profit = profit / 2
-
-                if manager.lower() == employee_name.lower():
-
-                    dashboard["total_entries"] += 0.5
-                    dashboard["shared_entries"] += 0.5
-                    dashboard["total_profit"] += split_profit
-
-                    dashboard["entries"].append({
-                        "customer_name": customer_name,
-                        "profit_share": split_profit,
-                        "status": status,
-                        "entry_type": "shared"
-                    })
-
-                if coordinator.lower() == employee_name.lower():
-
-                    dashboard["total_entries"] += 0.5
-                    dashboard["shared_entries"] += 0.5
-                    dashboard["total_profit"] += split_profit
-
-                    dashboard["entries"].append({
-                        "customer_name": customer_name,
-                        "profit_share": split_profit,
-                        "status": status,
-                        "entry_type": "shared"
-                    })
-
-        return jsonify({
-            "success": True,
-            "dashboard": dashboard
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-# ==========================================
 @app.route('/admin-dashboard', methods=['GET'])
 def admin_dashboard():
-
     try:
-
         month = request.args.get('month')
 
         cur = mysql.connection.cursor()
 
         if month and month != "":
-
-            cur.execute("""
-                SELECT *
-                FROM ledger_entries
-                WHERE month=%s
-            """, (month,))
-
+            cur.execute(
+                "SELECT * FROM ledger_entries WHERE month=%s",
+                (month,)
+            )
         else:
-
-            cur.execute("""
-                SELECT *
-                FROM ledger_entries
-            """)
+            cur.execute("SELECT * FROM ledger_entries")
 
         rows = cur.fetchall()
-
+        columns = [desc[0] for desc in cur.description]
         cur.close()
+
+        total_profit = 0
+
+        for row in rows:
+            try:
+                # If total_receivable is in another index, adjust here
+                total_profit += float(row[5]) if row[5] else 0
+            except:
+                pass
+
+        summary = {
+            "total_employees": 0,
+            "total_entries": len(rows),
+            "total_company_profit": total_profit
+        }
 
         return jsonify({
             "success": True,
-            "entries": rows
+            "entries": rows,
+            "summary": summary,
+            "top_performers": []
         })
 
     except Exception as e:
-
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
+
+
+# ==========================================
+# EXPORT REPORT
+# ==========================================
+
+@app.route('/export-report', methods=['GET'])
+def export_report():
+    try:
+        month = request.args.get('month')
+
+        cur = mysql.connection.cursor()
+
+        if month and month != "":
+            cur.execute(
+                "SELECT * FROM ledger_entries WHERE month=%s",
+                (month,)
+            )
+        else:
+            cur.execute("SELECT * FROM ledger_entries")
+
+        rows = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+        cur.close()
+
+        df = pd.DataFrame(rows, columns=columns)
+
+        output = BytesIO()
+        df.to_excel(output, index=False)
+        output.seek(0)
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="employee_report.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+# ==========================================
 # RUN APP
 # ==========================================
 
