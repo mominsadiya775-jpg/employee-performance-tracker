@@ -205,7 +205,7 @@ function AdminDashboard({ user, handleLogout }) {
                             </h5>
 
                             <h2>
-                                ₹{dashboardData.summary.total_company_profit}
+                                ₹{dashboardData?.summary?.total_company_profit || 0.total_company_profit}
                             </h2>
 
                         </div>
