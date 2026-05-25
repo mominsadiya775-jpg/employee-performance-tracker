@@ -48,11 +48,9 @@ def upload_excel():
         for _, row in df.iterrows():
             def g(col):
                 val = row.get(col)
-                if pd.isna(val) if hasattr(val, '__class__') else False:
-                    return None
                 try:
                     import math
-                    if math.isnan(float(val)):
+                    if val is None or (isinstance(val, float) and math.isnan(val)):
                         return None
                 except:
                     pass
@@ -69,10 +67,15 @@ def upload_excel():
             except:
                 total_rec = 0
 
+            try:
+                total_pay = float(row.get('T Payable A') or 0)
+            except:
+                total_pay = 0
+
             cur.execute("""
                 INSERT INTO ledger_entries 
-                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, status, remarks)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 entry_date,
                 g('Month'),
@@ -81,6 +84,7 @@ def upload_excel():
                 g('Help Taken From'),
                 g('customer Name'),
                 total_rec,
+                total_pay,
                 g('Status'),
                 g('Entry status Given / Not Given\nRemarks if any\nPayment status (Paid / Unpaid / Hold )')
             ))
@@ -95,28 +99,45 @@ def upload_excel():
 def admin_dashboard():
     try:
         month = request.args.get('month')
+        period = request.args.get('period')
         cur = mysql.connection.cursor()
         cur.execute("SELECT COUNT(*) FROM users WHERE role='employee'")
         total_employees = cur.fetchone()[0]
+
+        query = "SELECT data_managed_by, coordination_done_by, total_receivable, total_payable FROM ledger_entries"
+        params = []
         if month and month != "":
-            cur.execute("SELECT data_managed_by, coordination_done_by, total_receivable FROM ledger_entries WHERE month=%s", (month,))
-        else:
-            cur.execute("SELECT data_managed_by, coordination_done_by, total_receivable FROM ledger_entries")
+            query += " WHERE month=%s"
+            params.append(month)
+
+        cur.execute(query, params)
         rows = cur.fetchall()
         cur.close()
+
         performance = {}
-        total_profit = 0
+        total_receivable = 0
+        total_payable = 0
         total_entries = len(rows)
+
         for row in rows:
             manager = str(row[0]).strip() if row[0] else None
             coordinator = str(row[1]).strip() if row[1] else None
             try:
-                profit = float(row[2]) if row[2] else 0
+                receivable = float(row[2]) if row[2] else 0
             except:
-                profit = 0
-            total_profit += profit
+                receivable = 0
+            try:
+                payable = float(row[3]) if row[3] else 0
+            except:
+                payable = 0
+
+            profit = receivable - payable
+            total_receivable += receivable
+            total_payable += payable
+
             if not manager:
                 continue
+
             if not coordinator or manager == coordinator:
                 if manager not in performance:
                     performance[manager] = {"entries": 0, "profit": 0}
@@ -132,7 +153,10 @@ def admin_dashboard():
                     performance[coordinator] = {"entries": 0, "profit": 0}
                 performance[coordinator]["entries"] += 0.5
                 performance[coordinator]["profit"] += split
+
+        total_profit = total_receivable - total_payable
         sorted_perf = sorted(performance.items(), key=lambda x: x[1]["profit"], reverse=True)
+
         return jsonify({
             "success": True,
             "summary": {
@@ -145,15 +169,104 @@ def admin_dashboard():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/employee-dashboard', methods=['GET'])
+def employee_dashboard():
+    try:
+        username = request.args.get('username')
+        month = request.args.get('month')
+
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT full_name FROM users WHERE username=%s", (username,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        full_name = user[0]
+        name_parts = full_name.split()
+        first_name = name_parts[0]
+        last_name_initial = name_parts[-1][0] if len(name_parts) > 1 else ""
+        short_name = f"{first_name} {last_name_initial}"
+
+        query = """SELECT customer_name, type_of_support, total_receivable, total_payable, 
+                   coordination_done_by, data_managed_by, status, entry_date, month
+                   FROM ledger_entries 
+                   WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
+        params = [f"%{first_name}%", f"%{first_name}%"]
+
+        if month and month != "":
+            query += " AND month=%s"
+            params.append(month)
+
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        cur.close()
+
+        solo = 0
+        shared = 0
+        total_profit = 0
+        entries = []
+
+        for row in rows:
+            customer = row[0]
+            type_support = row[1]
+            receivable = float(row[2]) if row[2] else 0
+            payable = float(row[3]) if row[3] else 0
+            coordinator = str(row[4]).strip() if row[4] else ""
+            manager = str(row[5]).strip() if row[5] else ""
+            status = row[6]
+            entry_date = str(row[7])
+            entry_month = row[8]
+
+            profit = receivable - payable
+
+            if not coordinator or first_name.lower() in manager.lower():
+                if not coordinator or manager == coordinator:
+                    entry_type = "Solo"
+                    my_profit = profit
+                    solo += 1
+                else:
+                    entry_type = "Shared"
+                    my_profit = profit / 2
+                    shared += 1
+            else:
+                entry_type = "Shared"
+                my_profit = profit / 2
+                shared += 1
+
+            total_profit += my_profit
+            entries.append({
+                "customer": customer,
+                "entry_type": entry_type,
+                "profit_share": my_profit,
+                "status": status,
+                "date": entry_date,
+                "month": entry_month
+            })
+
+        return jsonify({
+            "success": True,
+            "summary": {
+                "total_entries": solo + shared,
+                "solo_entries": solo,
+                "shared_entries": shared,
+                "total_profit": total_profit
+            },
+            "entries": entries
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/all-entries', methods=['GET'])
 def all_entries():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT id, entry_date, month, customer_name, data_managed_by, coordination_done_by, total_receivable, status FROM ledger_entries ORDER BY id DESC")
+        cur.execute("SELECT id, entry_date, month, customer_name, data_managed_by, coordination_done_by, total_receivable, total_payable, status FROM ledger_entries ORDER BY id DESC")
         rows = cur.fetchall()
         cur.close()
         entries = []
         for row in rows:
+            receivable = float(row[6]) if row[6] else 0
+            payable = float(row[7]) if row[7] else 0
             entries.append({
                 "id": row[0],
                 "entry_date": str(row[1]),
@@ -161,8 +274,10 @@ def all_entries():
                 "customer_name": row[3],
                 "data_managed_by": row[4],
                 "coordination_done_by": row[5],
-                "total_receivable": float(row[6]) if row[6] else 0,
-                "status": row[7]
+                "total_receivable": receivable,
+                "total_payable": payable,
+                "profit": receivable - payable,
+                "status": row[8]
             })
         return jsonify({"success": True, "entries": entries})
     except Exception as e:
@@ -173,15 +288,33 @@ def add_entry():
     try:
         data = request.get_json()
         cur = mysql.connection.cursor()
-        cur.execute("""INSERT INTO ledger_entries (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, status, remarks)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        cur.execute("""INSERT INTO ledger_entries (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (data.get('entry_date'), data.get('month'), data.get('type_of_support'),
              data.get('data_managed_by'), data.get('coordination_done_by'),
              data.get('customer_name'), float(data.get('total_receivable') or 0),
+             float(data.get('total_payable') or 0),
              data.get('status'), data.get('remarks')))
         mysql.connection.commit()
         cur.close()
         return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/add-member', methods=['POST'])
+def add_member():
+    try:
+        data = request.get_json()
+        full_name = data.get('full_name')
+        username = data.get('username')
+        password = data.get('password')
+        role = data.get('role', 'employee')
+        cur = mysql.connection.cursor()
+        cur.execute("INSERT INTO users (full_name, username, password, role, status) VALUES (%s,%s,%s,%s,'active')",
+            (full_name, username, password, role))
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"success": True, "message": "Member added successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
