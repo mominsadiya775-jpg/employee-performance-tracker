@@ -2,7 +2,6 @@ import AddEntryForm from "./AddEntryForm";
 import EntriesTable from "./EntriesTable";
 import Layout from "./Layout";
 import AnalyticsChart from "./AnalyticsChart";
-
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -15,7 +14,6 @@ function AdminDashboard({ user, handleLogout }) {
       const response = await axios.get(
         `https://employee-performance-tracker-gtez.onrender.com/admin-dashboard?month=${selectedMonth}`
       );
-
       setDashboardData(response.data);
     } catch (error) {
       console.log("Dashboard Error:", error);
@@ -26,6 +24,27 @@ function AdminDashboard({ user, handleLogout }) {
     window.open(
       `https://employee-performance-tracker-gtez.onrender.com/export-report?month=${selectedMonth}`
     );
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axios.post(
+        "https://employee-performance-tracker-gtez.onrender.com/upload-excel",
+        formData
+      );
+      if (res.data.success) {
+        alert(`${res.data.rows_inserted} rows uploaded successfully!`);
+        fetchDashboard();
+      } else {
+        alert("Upload failed: " + res.data.error);
+      }
+    } catch (err) {
+      alert("Upload error: " + err.message);
+    }
   };
 
   useEffect(() => {
@@ -46,7 +65,6 @@ function AdminDashboard({ user, handleLogout }) {
 
         <div className="mb-4">
           <label className="form-label">Select Month</label>
-
           <select
             className="form-select"
             value={selectedMonth}
@@ -68,12 +86,23 @@ function AdminDashboard({ user, handleLogout }) {
           </select>
         </div>
 
-        <button
-          className="btn btn-success mb-4"
-          onClick={handleExport}
-        >
-          Export Excel Report
-        </button>
+        <div className="d-flex gap-3 mb-4">
+          <button className="btn btn-success" onClick={handleExport}>
+            Export Excel Report
+          </button>
+
+          <div>
+            <label className="btn btn-primary">
+              Upload Master Sheet (Excel)
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                hidden
+                onChange={handleUpload}
+              />
+            </label>
+          </div>
+        </div>
 
         <div className="row">
           <div className="col-md-4 mb-3">
@@ -100,7 +129,6 @@ function AdminDashboard({ user, handleLogout }) {
 
         <div className="card shadow p-4 mt-4">
           <h3 className="mb-3">Top Performers</h3>
-
           <table className="table table-bordered table-striped">
             <thead>
               <tr>
@@ -109,19 +137,16 @@ function AdminDashboard({ user, handleLogout }) {
                 <th>Total Profit</th>
               </tr>
             </thead>
-
             <tbody>
               {dashboardData.top_performers &&
               dashboardData.top_performers.length > 0 ? (
-                dashboardData.top_performers.map(
-                  (employee, index) => (
-                    <tr key={index}>
-                      <td>{employee[0]}</td>
-                      <td>{employee[1].entries}</td>
-                      <td>₹{employee[1].profit}</td>
-                    </tr>
-                  )
-                )
+                dashboardData.top_performers.map((employee, index) => (
+                  <tr key={index}>
+                    <td>{employee[0]}</td>
+                    <td>{employee[1].entries}</td>
+                    <td>₹{employee[1].profit}</td>
+                  </tr>
+                ))
               ) : (
                 <tr>
                   <td colSpan="3" className="text-center">
@@ -133,9 +158,7 @@ function AdminDashboard({ user, handleLogout }) {
           </table>
         </div>
 
-        <AnalyticsChart
-          topPerformers={dashboardData.top_performers || []}
-        />
+        <AnalyticsChart topPerformers={dashboardData.top_performers || []} />
 
         <div className="mt-4">
           <AddEntryForm />
