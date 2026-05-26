@@ -23,7 +23,8 @@ PERIOD_MONTHS = {
     'Q4': ('October','November','December'),
     'H1': ('January','February','March','April','May','June'),
     'H2': ('July','August','September','October','November','December'),
-    'Annual': ('January','February','March','April','May','June','July','August','September','October','November','December')
+    'Annual': ('January','February','March','April','May','June','July','August','September','October','November','December'),
+    'FY': ('April','May','June','July','August','September','October','November','December','January','February','March')
 }
 
 @app.route('/')
