@@ -108,6 +108,8 @@ function AdminDashboard({ user, handleLogout }) {
               <option value="H1">Half Year 1 - Jan to Jun</option>
               <option value="H2">Half Year 2 - Jul to Dec</option>
               <option value="Annual">Annual - Full Year</option>
+              <option value="FY">Financial Year(Apr-Mar)</option>
+
             </select>
 
             <button className="btn btn-secondary" onClick={() => { setSelectedMonth(""); setSelectedPeriod(""); }}>
