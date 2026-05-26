@@ -190,7 +190,7 @@ def employee_dashboard():
                    coordination_done_by, data_managed_by, status, entry_date, month
                    FROM ledger_entries 
                    WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
-        params = [f"%{short_name}%", f"%{short_name}%"]
+        params = [f"{short_name}", f"{short_name}"]
 
         if month and month != "":
             query += " AND month=%s"
