@@ -322,6 +322,29 @@ def add_member():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/get-members', methods=['GET'])
+def get_members():
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id, full_name, username, role, status FROM users ORDER BY id")
+        rows = cur.fetchall()
+        cur.close()
+        members = [{"id": r[0], "full_name": r[1], "username": r[2], "role": r[3], "status": r[4]} for r in rows]
+        return jsonify({"success": True, "members": members})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/delete-member/<int:id>', methods=['DELETE'])
+def delete_member(id):
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("DELETE FROM users WHERE id=%s", (id,))
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/delete-entry/<int:id>', methods=['DELETE'])
 def delete_entry(id):
     try:
