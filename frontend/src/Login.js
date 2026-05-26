@@ -21,22 +21,41 @@ function Login({ setUser }) {
       );
 
       if (response.data.success) {
-        localStorage.setItem("token", response.data.token);
+        // Clear old data
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
 
-        
+        // Save fresh token
+        if (response.data.token) {
+          localStorage.setItem(
+            "token",
+            response.data.token
+          );
+        }
 
+        // Save user
+        localStorage.setItem(
+          "user",
+          JSON.stringify(response.data.user)
+        );
+
+        // Update app state
         setUser(response.data.user);
 
         alert("Login Successful");
       } else {
         alert("Invalid Credentials");
       }
+
     } catch (error) {
-      console.log("LOGIN ERROR:", error.response?.data || error);
+      console.log(
+        "LOGIN ERROR:",
+        error.response?.data || error
+      );
 
       alert(
         error.response?.data?.message ||
-          "Login Failed"
+        "Login Failed"
       );
     } finally {
       setLoading(false);
@@ -49,7 +68,6 @@ function Login({ setUser }) {
         <div className="col-md-4">
 
           <div className="card p-4 shadow">
-
             <h2 className="text-center mb-4">
               Login
             </h2>
@@ -87,11 +105,12 @@ function Login({ setUser }) {
                 className="btn btn-primary w-100"
                 disabled={loading}
               >
-                {loading ? "Logging in..." : "Login"}
+                {loading
+                  ? "Logging in..."
+                  : "Login"}
               </button>
 
             </form>
-
           </div>
 
         </div>
