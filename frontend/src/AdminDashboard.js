@@ -12,6 +12,7 @@ function AdminDashboard({ user, handleLogout }) {
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ full_name: "", username: "", password: "", role: "employee" });
+  const [members, setMembers] = useState([]);
 
   const fetchDashboard = async () => {
     try {
@@ -21,6 +22,29 @@ function AdminDashboard({ user, handleLogout }) {
       setDashboardData(response.data);
     } catch (error) {
       console.log("Dashboard Error:", error);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const res = await axios.get(`${API}/get-members`);
+      if (res.data.success) setMembers(res.data.members);
+    } catch (err) {
+      console.log("Members Error:", err);
+    }
+  };
+
+  const handleDeleteMember = async (id, name) => {
+    if (!window.confirm(`Delete ${name}?`)) return;
+    try {
+      const res = await axios.delete(`${API}/delete-member/${id}`);
+      if (res.data.success) {
+        alert("Member deleted!");
+        fetchMembers();
+        fetchDashboard();
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
     }
   };
 
@@ -53,6 +77,7 @@ function AdminDashboard({ user, handleLogout }) {
         alert("Member added successfully!");
         setShowAddMember(false);
         setNewMember({ full_name: "", username: "", password: "", role: "employee" });
+        fetchMembers();
         fetchDashboard();
       } else {
         alert("Failed: " + res.data.error);
@@ -64,6 +89,7 @@ function AdminDashboard({ user, handleLogout }) {
 
   useEffect(() => {
     fetchDashboard();
+    fetchMembers();
   }, [selectedMonth, selectedPeriod]);
 
   if (!dashboardData) {
@@ -108,8 +134,7 @@ function AdminDashboard({ user, handleLogout }) {
               <option value="H1">Half Year 1 - Jan to Jun</option>
               <option value="H2">Half Year 2 - Jul to Dec</option>
               <option value="Annual">Annual - Full Year</option>
-              <option value="FY">Financial Year(Apr-Mar)</option>
-
+              <option value="FY">Financial Year (Apr-Mar)</option>
             </select>
 
             <button className="btn btn-secondary" onClick={() => { setSelectedMonth(""); setSelectedPeriod(""); }}>
@@ -212,6 +237,46 @@ function AdminDashboard({ user, handleLogout }) {
         </div>
 
         <AnalyticsChart topPerformers={dashboardData.top_performers || []} />
+
+        {/* MEMBERS LIST */}
+        <div className="card shadow p-4 mt-4">
+          <h3 className="mb-3">All Members</h3>
+          <table className="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.length > 0 ? (
+                members.map((member, index) => (
+                  <tr key={member.id}>
+                    <td>{index + 1}</td>
+                    <td>{member.full_name}</td>
+                    <td>{member.username}</td>
+                    <td><span className={`badge ${member.role === 'admin' ? 'bg-danger' : 'bg-primary'}`}>{member.role}</span></td>
+                    <td><span className="badge bg-success">{member.status}</span></td>
+                    <td>
+                      {member.username !== user.username && (
+                        <button className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteMember(member.id, member.full_name)}>
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan="6" className="text-center">No Members Found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div className="mt-4">
           <EntriesTable />
