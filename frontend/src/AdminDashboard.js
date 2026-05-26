@@ -9,12 +9,15 @@ const API = "https://employee-performance-tracker-gtez.onrender.com";
 function AdminDashboard({ user, handleLogout }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ full_name: "", username: "", password: "", role: "employee" });
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(`${API}/admin-dashboard?month=${selectedMonth}`);
+      const response = await axios.get(
+        `${API}/admin-dashboard?month=${selectedMonth}&period=${selectedPeriod}`
+      );
       setDashboardData(response.data);
     } catch (error) {
       console.log("Dashboard Error:", error);
@@ -22,7 +25,7 @@ function AdminDashboard({ user, handleLogout }) {
   };
 
   const handleExport = () => {
-    window.open(`${API}/export-report?month=${selectedMonth}`);
+    window.open(`${API}/export-report?month=${selectedMonth}&period=${selectedPeriod}`);
   };
 
   const handleUpload = async (e) => {
@@ -61,7 +64,7 @@ function AdminDashboard({ user, handleLogout }) {
 
   useEffect(() => {
     fetchDashboard();
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedPeriod]);
 
   if (!dashboardData) {
     return <h2 className="text-center mt-5">Loading...</h2>;
@@ -76,22 +79,41 @@ function AdminDashboard({ user, handleLogout }) {
         </div>
 
         <div className="mb-4">
-          <label className="form-label">Select Month</label>
-          <select className="form-select" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-            <option value="">All Months</option>
-            <option value="January">January</option>
-            <option value="February">February</option>
-            <option value="March">March</option>
-            <option value="April">April</option>
-            <option value="May">May</option>
-            <option value="June">June</option>
-            <option value="July">July</option>
-            <option value="August">August</option>
-            <option value="September">September</option>
-            <option value="October">October</option>
-            <option value="November">November</option>
-            <option value="December">December</option>
-          </select>
+          <label className="form-label fw-bold">Filter Performance</label>
+          <div className="d-flex gap-3 flex-wrap">
+            <select className="form-select w-auto" value={selectedMonth}
+              onChange={(e) => { setSelectedMonth(e.target.value); setSelectedPeriod(""); }}>
+              <option value="">Monthly Filter</option>
+              <option value="January">January</option>
+              <option value="February">February</option>
+              <option value="March">March</option>
+              <option value="April">April</option>
+              <option value="May">May</option>
+              <option value="June">June</option>
+              <option value="July">July</option>
+              <option value="August">August</option>
+              <option value="September">September</option>
+              <option value="October">October</option>
+              <option value="November">November</option>
+              <option value="December">December</option>
+            </select>
+
+            <select className="form-select w-auto" value={selectedPeriod}
+              onChange={(e) => { setSelectedPeriod(e.target.value); setSelectedMonth(""); }}>
+              <option value="">Period Filter</option>
+              <option value="Q1">Q1 - Jan to Mar</option>
+              <option value="Q2">Q2 - Apr to Jun</option>
+              <option value="Q3">Q3 - Jul to Sep</option>
+              <option value="Q4">Q4 - Oct to Dec</option>
+              <option value="H1">Half Year 1 - Jan to Jun</option>
+              <option value="H2">Half Year 2 - Jul to Dec</option>
+              <option value="Annual">Annual - Full Year</option>
+            </select>
+
+            <button className="btn btn-secondary" onClick={() => { setSelectedMonth(""); setSelectedPeriod(""); }}>
+              Clear Filter
+            </button>
+          </div>
         </div>
 
         <div className="d-flex gap-3 mb-4 flex-wrap">
@@ -159,7 +181,10 @@ function AdminDashboard({ user, handleLogout }) {
         </div>
 
         <div className="card shadow p-4 mt-4">
-          <h3 className="mb-3">Top Performers</h3>
+          <h3 className="mb-3">Top Performers
+            {selectedMonth && <span className="text-muted fs-6 ms-2">— {selectedMonth}</span>}
+            {selectedPeriod && <span className="text-muted fs-6 ms-2">— {selectedPeriod}</span>}
+          </h3>
           <table className="table table-bordered table-striped">
             <thead>
               <tr>
