@@ -16,6 +16,16 @@ app.config['MYSQL_PORT'] = int(os.environ.get('MYSQL_PORT', 44015))
 
 mysql = MySQL(app)
 
+PERIOD_MONTHS = {
+    'Q1': ('January','February','March'),
+    'Q2': ('April','May','June'),
+    'Q3': ('July','August','September'),
+    'Q4': ('October','November','December'),
+    'H1': ('January','February','March','April','May','June'),
+    'H2': ('July','August','September','October','November','December'),
+    'Annual': ('January','February','March','April','May','June','July','August','September','October','November','December')
+}
+
 @app.route('/')
 def home():
     return "Employee Performance Tracker Running Successfully"
@@ -99,13 +109,20 @@ def upload_excel():
 def admin_dashboard():
     try:
         month = request.args.get('month')
+        period = request.args.get('period')
         cur = mysql.connection.cursor()
         cur.execute("SELECT COUNT(*) FROM users WHERE role='employee'")
         total_employees = cur.fetchone()[0]
 
         query = "SELECT data_managed_by, coordination_done_by, total_receivable, total_payable FROM ledger_entries"
         params = []
-        if month and month != "":
+
+        if period and period in PERIOD_MONTHS:
+            months = PERIOD_MONTHS[period]
+            placeholders = ','.join(['%s'] * len(months))
+            query += f" WHERE month IN ({placeholders})"
+            params = list(months)
+        elif month and month != "":
             query += " WHERE month=%s"
             params.append(month)
 
@@ -173,6 +190,7 @@ def employee_dashboard():
     try:
         username = request.args.get('username')
         month = request.args.get('month')
+        period = request.args.get('period', '')
 
         cur = mysql.connection.cursor()
         cur.execute("SELECT full_name FROM users WHERE username=%s", (username,))
@@ -192,7 +210,12 @@ def employee_dashboard():
                    WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
         params = [f"{short_name}", f"{short_name}"]
 
-        if month and month != "":
+        if period and period in PERIOD_MONTHS:
+            months = PERIOD_MONTHS[period]
+            placeholders = ','.join(['%s'] * len(months))
+            query += f" AND month IN ({placeholders})"
+            params.extend(list(months))
+        elif month and month != "":
             query += " AND month=%s"
             params.append(month)
 
@@ -313,11 +336,18 @@ def delete_entry(id):
 def export_report():
     try:
         month = request.args.get('month')
+        period = request.args.get('period')
         cur = mysql.connection.cursor()
-        if month and month != "":
+
+        if period and period in PERIOD_MONTHS:
+            months = PERIOD_MONTHS[period]
+            placeholders = ','.join(['%s'] * len(months))
+            cur.execute(f"SELECT * FROM ledger_entries WHERE month IN ({placeholders})", list(months))
+        elif month and month != "":
             cur.execute("SELECT * FROM ledger_entries WHERE month=%s", (month,))
         else:
             cur.execute("SELECT * FROM ledger_entries")
+
         rows = cur.fetchall()
         columns = [desc[0] for desc in cur.description]
         cur.close()
