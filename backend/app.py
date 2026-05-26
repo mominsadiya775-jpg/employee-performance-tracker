@@ -99,7 +99,6 @@ def upload_excel():
 def admin_dashboard():
     try:
         month = request.args.get('month')
-        period = request.args.get('period')
         cur = mysql.connection.cursor()
         cur.execute("SELECT COUNT(*) FROM users WHERE role='employee'")
         total_employees = cur.fetchone()[0]
@@ -191,7 +190,7 @@ def employee_dashboard():
                    coordination_done_by, data_managed_by, status, entry_date, month
                    FROM ledger_entries 
                    WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
-        params = [f"%{first_name}%", f"%{first_name}%"]
+        params = [f"%{short_name}%", f"%{short_name}%"]
 
         if month and month != "":
             query += " AND month=%s"
@@ -208,7 +207,6 @@ def employee_dashboard():
 
         for row in rows:
             customer = row[0]
-            type_support = row[1]
             receivable = float(row[2]) if row[2] else 0
             payable = float(row[3]) if row[3] else 0
             coordinator = str(row[4]).strip() if row[4] else ""
@@ -219,7 +217,7 @@ def employee_dashboard():
 
             profit = receivable - payable
 
-            if not coordinator or first_name.lower() in manager.lower():
+            if not coordinator or short_name.lower() in manager.lower():
                 if not coordinator or manager == coordinator:
                     entry_type = "Solo"
                     my_profit = profit
@@ -280,24 +278,6 @@ def all_entries():
                 "status": row[8]
             })
         return jsonify({"success": True, "entries": entries})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/add-entry', methods=['POST'])
-def add_entry():
-    try:
-        data = request.get_json()
-        cur = mysql.connection.cursor()
-        cur.execute("""INSERT INTO ledger_entries (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-            (data.get('entry_date'), data.get('month'), data.get('type_of_support'),
-             data.get('data_managed_by'), data.get('coordination_done_by'),
-             data.get('customer_name'), float(data.get('total_receivable') or 0),
-             float(data.get('total_payable') or 0),
-             data.get('status'), data.get('remarks')))
-        mysql.connection.commit()
-        cur.close()
-        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
