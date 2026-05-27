@@ -28,49 +28,27 @@ function Login({ setUser }) {
       console.log("LOGIN RESPONSE:", response.data);
 
       if (response.data.success) {
-        // clear old data
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        // save token
         if (response.data.token) {
           localStorage.setItem("token", response.data.token);
-          console.log(
-            "Saved Token:",
-            localStorage.getItem("token")
-          );
         }
 
-        // save user
         if (response.data.user) {
-          localStorage.setItem(
-            "user",
-            JSON.stringify(response.data.user)
-          );
-
+          localStorage.setItem("user", JSON.stringify(response.data.user));
           if (setUser) {
             setUser(response.data.user);
           }
         }
-
-        alert("Login Successful");
-
-        // redirect
-        window.location.href = "/dashboard";
 
       } else {
         alert(response.data.message || "Invalid Credentials");
       }
 
     } catch (error) {
-      console.error(
-        "LOGIN ERROR:",
-        error.response?.data || error.message
-      );
-
-      alert(
-        error.response?.data?.message || "Login Failed"
-      );
+      console.error("LOGIN ERROR:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Login Failed");
     } finally {
       setLoading(false);
     }
@@ -82,7 +60,6 @@ function Login({ setUser }) {
         <div className="col-md-4">
           <div className="card p-4 shadow">
             <h2 className="text-center mb-4">Login</h2>
-
             <form onSubmit={handleLogin}>
               <div className="mb-3">
                 <label>Username</label>
@@ -90,26 +67,20 @@ function Login({ setUser }) {
                   type="text"
                   className="form-control"
                   value={username}
-                  onChange={(e) =>
-                    setUsername(e.target.value)
-                  }
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>
-
               <div className="mb-3">
                 <label>Password</label>
                 <input
                   type="password"
                   className="form-control"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
-
               <button
                 type="submit"
                 className="btn btn-primary w-100"
@@ -118,7 +89,6 @@ function Login({ setUser }) {
                 {loading ? "Logging in..." : "Login"}
               </button>
             </form>
-
           </div>
         </div>
       </div>
