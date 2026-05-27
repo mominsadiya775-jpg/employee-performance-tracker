@@ -8,7 +8,6 @@ function Login({ setUser }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     setLoading(true);
 
     try {
@@ -20,35 +19,46 @@ function Login({ setUser }) {
         }
       );
 
-      if (response.data.success) {
-        // Clear old data
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+      console.log("FULL LOGIN RESPONSE:", response.data);
 
-        // Save fresh token
+      if (response.data.success) {
+        localStorage.clear();
+
         if (response.data.token) {
           localStorage.setItem(
             "token",
             response.data.token
           );
+
+          console.log(
+            "Token saved successfully:",
+            response.data.token
+          );
+        } else {
+          console.warn(
+            "No token received from backend"
+          );
         }
 
-        // Save user
-        localStorage.setItem(
-          "user",
-          JSON.stringify(response.data.user)
-        );
+        if (response.data.user) {
+          localStorage.setItem(
+            "user",
+            JSON.stringify(response.data.user)
+          );
 
-        // Update app state
-        setUser(response.data.user);
+          setUser(response.data.user);
+        }
 
         alert("Login Successful");
+
+        window.location.href = "/dashboard";
+
       } else {
         alert("Invalid Credentials");
       }
 
     } catch (error) {
-      console.log(
+      console.error(
         "LOGIN ERROR:",
         error.response?.data || error
       );
@@ -66,14 +76,12 @@ function Login({ setUser }) {
     <div className="container mt-5">
       <div className="row justify-content-center">
         <div className="col-md-4">
-
           <div className="card p-4 shadow">
             <h2 className="text-center mb-4">
               Login
             </h2>
 
             <form onSubmit={handleLogin}>
-
               <div className="mb-3">
                 <label>Username</label>
                 <input
@@ -109,10 +117,8 @@ function Login({ setUser }) {
                   ? "Logging in..."
                   : "Login"}
               </button>
-
             </form>
           </div>
-
         </div>
       </div>
     </div>
