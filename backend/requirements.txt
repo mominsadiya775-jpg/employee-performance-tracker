@@ -6,3 +6,4 @@ openpyxl
 mysqlclient
 gunicorn
 python-dotenv
+PyJWT==2.8.0
