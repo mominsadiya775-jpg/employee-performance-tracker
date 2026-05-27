@@ -8,64 +8,68 @@ function Login({ setUser }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (!username || !password) {
+      alert("Please enter username and password");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await axios.post(
         "https://employee-performance-tracker-gtez.onrender.com/login",
         {
-          username,
-          password,
+          username: username.trim(),
+          password: password.trim(),
         }
       );
 
-      console.log("FULL LOGIN RESPONSE:", response.data);
+      console.log("LOGIN RESPONSE:", response.data);
 
       if (response.data.success) {
-        localStorage.clear();
+        // clear old data
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
 
+        // save token
         if (response.data.token) {
-          localStorage.setItem(
-            "token",
-            response.data.token
-          );
-
+          localStorage.setItem("token", response.data.token);
           console.log(
-            "Token saved successfully:",
-            response.data.token
-          );
-        } else {
-          console.warn(
-            "No token received from backend"
+            "Saved Token:",
+            localStorage.getItem("token")
           );
         }
 
+        // save user
         if (response.data.user) {
           localStorage.setItem(
             "user",
             JSON.stringify(response.data.user)
           );
 
-          setUser(response.data.user);
+          if (setUser) {
+            setUser(response.data.user);
+          }
         }
 
         alert("Login Successful");
 
+        // redirect
         window.location.href = "/dashboard";
 
       } else {
-        alert("Invalid Credentials");
+        alert(response.data.message || "Invalid Credentials");
       }
 
     } catch (error) {
       console.error(
         "LOGIN ERROR:",
-        error.response?.data || error
+        error.response?.data || error.message
       );
 
       alert(
-        error.response?.data?.message ||
-        "Login Failed"
+        error.response?.data?.message || "Login Failed"
       );
     } finally {
       setLoading(false);
@@ -77,9 +81,7 @@ function Login({ setUser }) {
       <div className="row justify-content-center">
         <div className="col-md-4">
           <div className="card p-4 shadow">
-            <h2 className="text-center mb-4">
-              Login
-            </h2>
+            <h2 className="text-center mb-4">Login</h2>
 
             <form onSubmit={handleLogin}>
               <div className="mb-3">
@@ -113,11 +115,10 @@ function Login({ setUser }) {
                 className="btn btn-primary w-100"
                 disabled={loading}
               >
-                {loading
-                  ? "Logging in..."
-                  : "Login"}
+                {loading ? "Logging in..." : "Login"}
               </button>
             </form>
+
           </div>
         </div>
       </div>
