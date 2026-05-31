@@ -16,9 +16,7 @@ function AdminDashboard({ user, handleLogout }) {
 
   const fetchDashboard = async () => {
     try {
-      const response = await axios.get(
-        `${API}/admin-dashboard?month=${selectedMonth}&period=${selectedPeriod}`
-      );
+      const response = await axios.get(`${API}/admin-dashboard?month=${selectedMonth}&period=${selectedPeriod}`);
       setDashboardData(response.data);
     } catch (error) {
       console.log("Dashboard Error:", error);
@@ -202,7 +200,7 @@ function AdminDashboard({ user, handleLogout }) {
           <div className="col-md-4 mb-3">
             <div className="card shadow p-3">
               <h5>Total Company Profit</h5>
-              <h2>₹{dashboardData?.summary?.total_company_profit || 0}</h2>
+              <h2>₹{Number(dashboardData?.summary?.total_company_profit || 0).toFixed(2)}</h2>
             </div>
           </div>
         </div>
@@ -225,8 +223,8 @@ function AdminDashboard({ user, handleLogout }) {
                 dashboardData.top_performers.map((employee, index) => (
                   <tr key={index}>
                     <td>{employee[0]}</td>
-                    <td>{employee[1].entries}</td>
-                    <td>₹{employee[1].profit}</td>
+                    <td>{Number(employee[1].entries).toFixed(1)}</td>
+                    <td>₹{Number(employee[1].profit).toFixed(2)}</td>
                   </tr>
                 ))
               ) : (
@@ -238,7 +236,6 @@ function AdminDashboard({ user, handleLogout }) {
 
         <AnalyticsChart topPerformers={dashboardData.top_performers || []} />
 
-        {/* MEMBERS LIST */}
         <div className="card shadow p-4 mt-4">
           <h3 className="mb-3">All Members</h3>
           <table className="table table-bordered table-striped">

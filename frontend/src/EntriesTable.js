@@ -32,10 +32,8 @@ function EntriesTable() {
     }
   };
 
-  // Get unique employees
   const employees = [...new Set(entries.map(e => e.data_managed_by).filter(Boolean))];
 
-  // Filter entries
   const filteredEntries = entries.filter((entry) => {
     const monthMatch = selectedMonth === "" || entry.month === selectedMonth;
     const empMatch = selectedEmployee === "" || entry.data_managed_by === selectedEmployee;
@@ -46,7 +44,6 @@ function EntriesTable() {
     <div className="card shadow p-4 mt-4">
       <h3 className="mb-3">All Entries</h3>
 
-      {/* FILTERS */}
       <div className="d-flex gap-3 mb-3 flex-wrap">
         <select className="form-select w-auto" value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}>
@@ -78,7 +75,6 @@ function EntriesTable() {
         </button>
       </div>
 
-      {/* TABLE */}
       <div style={{overflowX: "auto"}}>
         <table className="table table-bordered table-striped">
           <thead>
@@ -100,15 +96,15 @@ function EntriesTable() {
             {filteredEntries.length > 0 ? (
               filteredEntries.map((entry) => (
                 <tr key={entry.id}>
-                  <td>{entry.id}</td>
+                  <td>{entry.reference_no || entry.id}</td>
                   <td>{entry.entry_date}</td>
                   <td>{entry.month}</td>
                   <td>{entry.customer_name}</td>
                   <td>{entry.data_managed_by}</td>
                   <td>{entry.coordination_done_by}</td>
-                  <td>₹{entry.total_receivable}</td>
-                  <td>₹{entry.total_payable}</td>
-                  <td>₹{entry.profit}</td>
+                  <td>₹{Number(entry.total_receivable).toFixed(2)}</td>
+                  <td>₹{Number(entry.total_payable).toFixed(2)}</td>
+                  <td>₹{Number(entry.profit).toFixed(2)}</td>
                   <td>{entry.status}</td>
                   <td>
                     <button className="btn btn-danger btn-sm"
