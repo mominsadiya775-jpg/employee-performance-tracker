@@ -29,12 +29,23 @@ PERIOD_MONTHS = {
     'FY': ('April','May','June','July','August','September','October','November','December','January','February','March')
 }
 
-def parse_date(val):
+def parse_date(val, month=None):
     if val is None:
         return None
     try:
-        if isinstance(val, (int, float)) and not math.isnan(float(val)):
-            return (datetime.datetime(1899, 12, 30) + datetime.timedelta(days=int(val))).strftime('%Y-%m-%d')
+        day = int(float(str(val)))
+        if month and 1 <= day <= 31:
+            month_map = {
+                'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                'September': 9, 'October': 10, 'November': 11, 'December': 12
+            }
+            m = month_map.get(str(month).strip())
+            if m:
+                return f"2026-{m:02d}-{day:02d}"
+    except:
+        pass
+    try:
         return pd.to_datetime(val).strftime('%Y-%m-%d')
     except:
         return None
@@ -94,8 +105,8 @@ def upload_excel():
                 row.get('Reference No') or
                 row.get('Ref No')
             )
-            entry_date = parse_date(row.get('Date'))
             month = safe_str(row.get('Month'))
+            entry_date = parse_date(row.get('Date'), month)
             type_of_support = safe_str(row.get('Type of support'))
             data_managed_by = safe_str(row.get('Data Managed By'))
             coordination_done_by = safe_str(row.get('Help Taken From'))
