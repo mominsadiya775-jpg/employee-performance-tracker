@@ -22,21 +22,26 @@ function EntriesTable() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete?")) return;
+    if (!window.confirm("Are you sure?")) return;
     try {
       await axios.delete(`${API}/delete-entry/${id}`);
-      alert("Entry deleted successfully");
+      alert("Deleted!");
       fetchEntries();
     } catch (error) {
       console.log(error);
     }
   };
 
-  const employees = [...new Set(entries.map(e => e.data_managed_by).filter(Boolean))];
+  const ALL_EMPLOYEES = [
+    "Ibrahim Hawai", "Asha Madam", "Shabnam Shaikh",
+    "Aman Shaikh", "Ayan Shaikh", "Rubeena Shaikh",
+    "Simran Rawat", "Musab Pathan", "Abdul Rehman"
+  ];
 
   const filteredEntries = entries.filter((entry) => {
     const monthMatch = selectedMonth === "" || entry.month === selectedMonth;
-    const empMatch = selectedEmployee === "" || entry.data_managed_by === selectedEmployee;
+    const empMatch = selectedEmployee === "" || 
+      (entry.data_managed_by && entry.data_managed_by.includes(selectedEmployee.split(" ")[0]));
     return monthMatch && empMatch;
   });
 
@@ -65,9 +70,15 @@ function EntriesTable() {
         <select className="form-select w-auto" value={selectedEmployee}
           onChange={(e) => setSelectedEmployee(e.target.value)}>
           <option value="">All Employees</option>
-          {employees.map((emp, i) => (
-            <option key={i} value={emp}>{emp}</option>
-          ))}
+          <option value="Ibrahim Hawai">Ibrahim Hawai</option>
+          <option value="Shabnam Shaikh">Shabnam Shaikh</option>
+          <option value="Ayan Shaikh">Ayan Shaikh</option>
+          <option value="Aman Shaikh">Aman Shaikh</option>
+          <option value="Asha Madam">Asha Madam</option>
+          <option value="Rubeena Shaikh">Rubeena Shaikh</option>
+          <option value="Simran Rawat">Simran Rawat</option>
+          <option value="Musab Pathan">Musab Pathan</option>
+          <option value="Abdul Rehman">Abdul Rehman</option>
         </select>
 
         <button className="btn btn-secondary" onClick={() => { setSelectedMonth(""); setSelectedEmployee(""); }}>
