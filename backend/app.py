@@ -109,7 +109,10 @@ def upload_excel():
             entry_date = parse_date(row.get('Date'), month)
             type_of_support = safe_str(row.get('Type of support'))
             data_managed_by = safe_str(row.get('Data Managed By'))
-            coordination_done_by = safe_str(row.get('Help Taken From'))
+            coordination_done_by = safe_str(
+    row.get('Help Taken From') or 
+    row.iloc[5] if len(row) > 5 else None
+)
             customer_name = safe_str(row.get('customer Name'))
             total_rec = safe_float(row.get('Total receivable'))
             total_pay = safe_float(row.get('T Payable A'))
