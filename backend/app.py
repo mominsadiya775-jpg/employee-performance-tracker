@@ -4,6 +4,8 @@ from flask_mysqldb import MySQL
 import pandas as pd
 from io import BytesIO
 import os
+import datetime
+import math
 
 app = Flask(__name__)
 CORS(app)
@@ -26,6 +28,35 @@ PERIOD_MONTHS = {
     'Annual': ('January','February','March','April','May','June','July','August','September','October','November','December'),
     'FY': ('April','May','June','July','August','September','October','November','December','January','February','March')
 }
+
+def parse_date(val):
+    if val is None:
+        return None
+    try:
+        if isinstance(val, (int, float)) and not math.isnan(float(val)):
+            return (datetime.datetime(1899, 12, 30) + datetime.timedelta(days=int(val))).strftime('%Y-%m-%d')
+        return pd.to_datetime(val).strftime('%Y-%m-%d')
+    except:
+        return None
+
+def safe_str(val):
+    if val is None:
+        return None
+    try:
+        if isinstance(val, float) and math.isnan(val):
+            return None
+    except:
+        pass
+    return str(val).strip()
+
+def safe_float(val):
+    try:
+        f = float(val)
+        if math.isnan(f):
+            return 0
+        return f
+    except:
+        return 0
 
 @app.route('/')
 def home():
@@ -57,30 +88,22 @@ def upload_excel():
         cur = mysql.connection.cursor()
         inserted = 0
         for _, row in df.iterrows():
-            def g(col):
-                val = row.get(col)
-                try:
-                    import math
-                    if val is None or (isinstance(val, float) and math.isnan(val)):
-                        return None
-                except:
-                    pass
-                return str(val).strip() if val is not None else None
-            entry_date = row.get('Date')
-            try:
-                entry_date = pd.to_datetime(entry_date).strftime('%Y-%m-%d')
-            except:
-                entry_date = None
-            try:
-                total_rec = float(row.get('Total receivable') or 0)
-            except:
-                total_rec = 0
-            try:
-                total_pay = float(row.get('T Payable A') or 0)
-            except:
-                total_pay = 0
-            cur.execute("""INSERT INTO ledger_entries (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                (entry_date, g('Month'), g('Type of support'), g('Data Managed By'), g('Help Taken From'), g('customer Name'), total_rec, total_pay, g('Status'), g('Entry status Given / Not Given\nRemarks if any\nPayment status (Paid / Unpaid / Hold )')))
+            ref_no = safe_str(row.get('Reference No\n(Support Count Number)') or row.get('Reference No') or row.get('Ref No'))
+            entry_date = parse_date(row.get('Date'))
+            month = safe_str(row.get('Month'))
+            type_of_support = safe_str(row.get('Type of support'))
+            data_managed_by = safe_str(row.get('Data Managed By'))
+            coordination_done_by = safe_str(row.get('Help Taken From'))
+            customer_name = safe_str(row.get('customer Name'))
+            total_rec = safe_float(row.get('Total receivable'))
+            total_pay = safe_float(row.get('T Payable A'))
+            status = safe_str(row.get('Status'))
+            remarks = safe_str(row.get('Entry status Given / Not Given\nRemarks if any\nPayment status (Paid / Unpaid / Hold )'))
+
+            cur.execute("""INSERT INTO ledger_entries 
+                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_rec, total_pay, status, remarks))
             inserted += 1
         mysql.connection.commit()
         cur.close()
@@ -116,14 +139,8 @@ def admin_dashboard():
         for row in rows:
             manager = str(row[0]).strip() if row[0] else None
             coordinator = str(row[1]).strip() if row[1] else None
-            try:
-                receivable = float(row[2]) if row[2] else 0
-            except:
-                receivable = 0
-            try:
-                payable = float(row[3]) if row[3] else 0
-            except:
-                payable = 0
+            receivable = safe_float(row[2])
+            payable = safe_float(row[3])
             profit = receivable - payable
             total_receivable += receivable
             total_payable += payable
@@ -166,7 +183,10 @@ def employee_dashboard():
         first_name = name_parts[0]
         last_name_initial = name_parts[-1][0] if len(name_parts) > 1 else ""
         short_name = f"{first_name} {last_name_initial}"
-        query = """SELECT customer_name, type_of_support, total_receivable, total_payable, coordination_done_by, data_managed_by, status, entry_date, month FROM ledger_entries WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
+        query = """SELECT customer_name, type_of_support, total_receivable, total_payable,
+                   coordination_done_by, data_managed_by, status, entry_date, month
+                   FROM ledger_entries
+                   WHERE data_managed_by LIKE %s OR coordination_done_by LIKE %s"""
         params = [f"{short_name}", f"{short_name}"]
         if period and period in PERIOD_MONTHS:
             months = PERIOD_MONTHS[period]
@@ -185,8 +205,8 @@ def employee_dashboard():
         entries = []
         for row in rows:
             customer = row[0]
-            receivable = float(row[2]) if row[2] else 0
-            payable = float(row[3]) if row[3] else 0
+            receivable = safe_float(row[2])
+            payable = safe_float(row[3])
             coordinator = str(row[4]).strip() if row[4] else ""
             manager = str(row[5]).strip() if row[5] else ""
             status = row[6]
@@ -221,8 +241,8 @@ def all_entries():
         cur.close()
         entries = []
         for row in rows:
-            receivable = float(row[6]) if row[6] else 0
-            payable = float(row[7]) if row[7] else 0
+            receivable = safe_float(row[6])
+            payable = safe_float(row[7])
             entries.append({"id": row[0], "entry_date": str(row[1]), "month": row[2], "customer_name": row[3], "data_managed_by": row[4], "coordination_done_by": row[5], "total_receivable": receivable, "total_payable": payable, "profit": receivable - payable, "status": row[8]})
         return jsonify({"success": True, "entries": entries})
     except Exception as e:
