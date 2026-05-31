@@ -88,7 +88,12 @@ def upload_excel():
         cur = mysql.connection.cursor()
         inserted = 0
         for _, row in df.iterrows():
-            ref_no = safe_str(row.get('Reference No\n(Support Count Number)') or row.get('Reference No') or row.get('Ref No'))
+            ref_no = safe_str(
+                row.get('Reference No\n(Support Count Number)') or
+                row.get('Reference No(Support Count Number)') or
+                row.get('Reference No') or
+                row.get('Ref No')
+            )
             entry_date = parse_date(row.get('Date'))
             month = safe_str(row.get('Month'))
             type_of_support = safe_str(row.get('Type of support'))
@@ -101,9 +106,9 @@ def upload_excel():
             remarks = safe_str(row.get('Entry status Given / Not Given\nRemarks if any\nPayment status (Paid / Unpaid / Hold )'))
 
             cur.execute("""INSERT INTO ledger_entries 
-                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                (entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_rec, total_pay, status, remarks))
+                (reference_no, entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_receivable, total_payable, status, remarks)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (ref_no, entry_date, month, type_of_support, data_managed_by, coordination_done_by, customer_name, total_rec, total_pay, status, remarks))
             inserted += 1
         mysql.connection.commit()
         cur.close()
@@ -163,7 +168,7 @@ def admin_dashboard():
                 performance[coordinator]["profit"] += split
         total_profit = total_receivable - total_payable
         sorted_perf = sorted(performance.items(), key=lambda x: x[1]["profit"], reverse=True)
-        return jsonify({"success": True, "summary": {"total_employees": total_employees, "total_entries": total_entries, "total_company_profit": total_profit}, "top_performers": sorted_perf})
+        return jsonify({"success": True, "summary": {"total_employees": total_employees, "total_entries": total_entries, "total_company_profit": round(total_profit, 2)}, "top_performers": [[k, {"entries": round(v["entries"], 1), "profit": round(v["profit"], 2)}] for k, v in sorted_perf]})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -227,8 +232,8 @@ def employee_dashboard():
                 my_profit = profit / 2
                 shared += 1
             total_profit += my_profit
-            entries.append({"customer": customer, "entry_type": entry_type, "profit_share": my_profit, "status": status, "date": entry_date, "month": entry_month})
-        return jsonify({"success": True, "summary": {"total_entries": solo + shared, "solo_entries": solo, "shared_entries": shared, "total_profit": total_profit}, "entries": entries})
+            entries.append({"customer": customer, "entry_type": entry_type, "profit_share": round(my_profit, 2), "status": status, "date": entry_date, "month": entry_month})
+        return jsonify({"success": True, "summary": {"total_entries": solo + shared, "solo_entries": solo, "shared_entries": shared, "total_profit": round(total_profit, 2)}, "entries": entries})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -236,14 +241,26 @@ def employee_dashboard():
 def all_entries():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT id, entry_date, month, customer_name, data_managed_by, coordination_done_by, total_receivable, total_payable, status FROM ledger_entries ORDER BY id DESC")
+        cur.execute("SELECT id, reference_no, entry_date, month, customer_name, data_managed_by, coordination_done_by, total_receivable, total_payable, status FROM ledger_entries ORDER BY id DESC")
         rows = cur.fetchall()
         cur.close()
         entries = []
         for row in rows:
-            receivable = safe_float(row[6])
-            payable = safe_float(row[7])
-            entries.append({"id": row[0], "entry_date": str(row[1]), "month": row[2], "customer_name": row[3], "data_managed_by": row[4], "coordination_done_by": row[5], "total_receivable": receivable, "total_payable": payable, "profit": receivable - payable, "status": row[8]})
+            receivable = safe_float(row[7])
+            payable = safe_float(row[8])
+            entries.append({
+                "id": row[0],
+                "reference_no": row[1],
+                "entry_date": str(row[2]),
+                "month": row[3],
+                "customer_name": row[4],
+                "data_managed_by": row[5],
+                "coordination_done_by": row[6],
+                "total_receivable": round(receivable, 2),
+                "total_payable": round(payable, 2),
+                "profit": round(receivable - payable, 2),
+                "status": row[9]
+            })
         return jsonify({"success": True, "entries": entries})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
